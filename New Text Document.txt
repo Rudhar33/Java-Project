@@ -1,0 +1,233 @@
+package project;
+import java.sql.*;
+import java.util.Scanner;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.ResultSet;
+
+
+public class studentauth {
+
+    // credentials for database connection
+    private static final String URL = "jdbc:mysql://localhost:3306/students";
+    private static final String USERNAME = "root";
+    private static final String PASSWORD = "SYSTEM123@";
+
+    // database connection and statement objects
+    private static Connection connection;
+    private static Statement statement;
+    private static ResultSet resultSet;
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        try {
+            // establish database connection
+            connection = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+            statement = connection.createStatement();
+
+            // validate user credentials
+            System.out.println("Enter Student ID to Access the Database: ");
+            String studentID = scanner.nextLine();
+            System.out.println("Confirm your Name: ");
+            String name = scanner.nextLine();
+
+            if (!validateUser(studentID, name)) {
+                System.out.println("Credentials not valid. Please try again.");
+                System.exit(0);
+            }
+
+            System.out.println("Approved " + studentID + ". Please continue.");
+
+            // display menu
+            while (true) {
+                System.out.println("\nSelect one of the options below:\n1. Insert record\n2. Select record \n3. Update record\n4. Remove record\n5. Exit");
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // consume newline character
+
+                switch (choice) {
+                    case 1:
+                        insert_new_data(scanner);
+                        break;
+                    case 2:
+                        view_record(scanner);
+                        break;
+                    case 3:
+                        update_student_data(scanner);
+                        break;
+                    case 4:
+                    	remove_student_data(scanner);
+                        break;
+                    case 5:
+                        System.out.println("Exiting the program.");
+                        System.exit(0);
+                    default:
+                        System.out.println("Invalid choice.");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (resultSet != null) resultSet.close();
+                if (statement != null) statement.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    
+    private static boolean validateUser(String studentID, String name) throws SQLException {
+        String sql = "SELECT COUNT(*) AS count FROM login_info WHERE stu_id='" + studentID + "' AND stu_name='" + name + "'";
+        resultSet = statement.executeQuery(sql);
+        resultSet.next();
+        int count = resultSet.getInt("count");
+        return count > 0;
+    }
+    
+    
+    
+    
+    private static void insert_new_data(Scanner scanner) throws SQLException {
+        System.out.println("Enter student ID:");
+        String studentID = scanner.nextLine();
+        System.out.println("Enter student name:");
+        String studentName = scanner.nextLine();
+        System.out.println("Enter date of birth (yyyy-mm-dd):");
+        String dob = scanner.nextLine();
+        System.out.println("Enter phone number:");
+        String phone = scanner.nextLine();
+        System.out.println("Enter guardian name:");
+        String guardianName = scanner.nextLine();
+        System.out.println("Enter course:");
+        String course = scanner.nextLine();
+
+        String sql = "INSERT INTO stu_info (stu_id, stu_name, dob, phone, guardian_name, course) VALUES (?, ?, ?, ?, ?, ?)";
+        PreparedStatement statement = connection.prepareStatement(sql);
+        statement.setString(1, studentID);
+        statement.setString(2, studentName);
+        statement.setString(3, dob);
+        statement.setString(4, phone);
+        statement.setString(5, guardianName);
+        statement.setString(6, course);
+
+        int rowsInserted = statement.executeUpdate();
+        if (rowsInserted > 0) {
+            System.out.println("Record inserted successfully.");
+        } else {
+            System.out.println("Failed to insert record.");
+        }
+    }
+
+    
+    
+   
+    private static void view_record(Scanner scanner) throws SQLException {
+        System.out.println("Input student ID:");
+        String studentID = scanner.nextLine();
+
+        String sql = "SELECT * FROM stu_info WHERE stu_id='" + studentID + "'";
+        ResultSet result = statement.executeQuery(sql);
+
+        if (result.next()) {
+            System.out.println("Student ID: " + result.getString("stu_id"));
+            System.out.println("Name: " + result.getString("stu_name"));
+            System.out.println("DOB: " + result.getString("dob"));
+            System.out.println("Mobile Number: " + result.getString("phone"));
+            System.out.println("Guardian's Name: " + result.getString("guardian_name"));
+            System.out.println("Course Enrolled: " + result.getString("course"));
+        } else {
+            System.out.println("No record found for student ID " + studentID);
+        }
+    }
+
+    
+    
+    private static void update_student_data(Scanner scanner) throws SQLException {
+        System.out.println("Input student ID:");
+        String studentID = scanner.nextLine();
+
+        // Prepare the update statement
+        String sql = "UPDATE stu_info SET stu_name=?, dob=?, phone=?, guardian_name=?, course=? WHERE stu_id=?";
+        PreparedStatement statement = connection.prepareStatement(sql);
+
+        // Get the record to update
+        sql = "SELECT * FROM stu_info WHERE stu_id=?";
+        PreparedStatement selectStatement = connection.prepareStatement(sql);
+        selectStatement.setString(1, studentID);
+        ResultSet result = selectStatement.executeQuery();
+
+        if (result.next()) {
+            // Get new values from user
+            System.out.println("Enter new student name (Skip - Enter):");
+            String studentName = scanner.nextLine().trim();
+            if (!studentName.isEmpty()) {
+                statement.setString(1, studentName);
+            } else {
+                statement.setString(1, result.getString("stu_name"));
+            }
+
+            System.out.println("Enter new Birth Date (Skip - Enter):");
+            String dob = scanner.nextLine().trim();
+            if (!dob.isEmpty()) {
+                statement.setString(2, dob);
+            } else {
+                statement.setString(2, result.getString("dob"));
+            }
+
+            System.out.println("Enter new phone number (Skip - Enter):");
+            String phone = scanner.nextLine().trim();
+            if (!phone.isEmpty()) {
+                statement.setString(3, phone);
+            } else {
+                statement.setString(3, result.getString("phone"));
+            }
+
+            System.out.println("Enter guardian name (Skip - Enter):");
+            String guardianName = scanner.nextLine().trim();
+            if (!guardianName.isEmpty()) {
+                statement.setString(4, guardianName);
+            } else {
+                statement.setString(4, result.getString("guardian_name"));
+            }
+
+            System.out.println("Enter new course (Skip - Enter):");
+            String course = scanner.nextLine().trim();
+            if (!course.isEmpty()) {
+                statement.setString(5, course);
+            } else {
+                statement.setString(5, result.getString("course"));
+            }
+            statement.setString(6, studentID);
+            statement.executeUpdate();
+            System.out.println("Record Updated.");
+            
+        } else {
+            System.out.print("Record not found");
+        }
+    }
+    
+    
+
+    public static void remove_student_data(Scanner scanner) throws SQLException {
+        System.out.println("Enter student ID:");
+        String studentID = scanner.nextLine();
+
+        // Prepare the delete statement
+        String sql = "DELETE FROM stu_info WHERE stu_id=?";
+        PreparedStatement statement = connection.prepareStatement(sql);
+        statement.setString(1, studentID);
+
+        // Execute the delete statement
+        int rowsDeleted = statement.executeUpdate();
+
+        if (rowsDeleted > 0) {
+            System.out.println("Record deleted successfully.");
+        } else {
+            System.out.println("Record not found.");
+        }
+    } 
+  }    
